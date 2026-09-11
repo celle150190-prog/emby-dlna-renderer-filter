@@ -30,6 +30,12 @@ namespace Emby.DlnaRendererFilter
                 EnableInMainMenu = true,
                 EmbeddedResourcePath = GetType().Namespace + ".Configuration.configPage.html"
             };
+
+            yield return new PluginPageInfo
+            {
+                Name = "DlnaRendererFilterjs",
+                EmbeddedResourcePath = GetType().Namespace + ".Configuration.DlnaRendererFilter.js"
+            };
         }
     }
 }
