@@ -1,0 +1,7 @@
+# Repository ownership
+* @celle150190-prog
+
+# Security-sensitive files
+/.github/workflows/ @celle150190-prog
+/Plugin.cs @celle150190-prog
+/RendererFilterEntryPoint.cs @celle150190-prog
