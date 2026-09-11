@@ -1,62 +1,128 @@
 # Emby DLNA Renderer Filter
 
-Erweiterung für Emby Server, die erkannte UPnP/DLNA-MediaRenderer auflistet und ausgewählte Renderer aus Embys **„Wiedergabe auf …“** herausfiltert.
+Emby Server plugin that detects UPnP/DLNA `MediaRenderer` devices and lets you hide selected DLNA renderers from Emby's **Play on / Wiedergabe auf …** list.
 
-## Ziel
+## What it does
 
-- Alle erkannten `MediaRenderer:1` erfassen.
-- Friendly Name, Hersteller, Modell, IP, UUID und Description-URL speichern.
-- Pro Gerät in der Plugin-Oberfläche festlegen, ob es in Emby PlayTo sichtbar sein soll.
-- Neue Geräte standardmäßig sichtbar lassen.
-- Keine Firewall-Regeln und keine Veränderung von `Emby.Dlna.dll`.
+- Detects DLNA/UPnP `MediaRenderer` devices seen by Emby Server.
+- Shows friendly name, manufacturer, model, IP address and UUID in the plugin settings page.
+- Lets you hide individual DLNA renderers from Emby's PlayTo device list.
+- New renderers remain visible by default.
+- Does not require firewall rules.
+- Does not modify `Emby.Dlna.dll`.
+- Fails open: if an Emby update changes the internal PlayTo handler and the hook cannot be installed, the plugin blocks nothing.
 
-## Wichtiger technischer Hinweis
+## What it does not filter
 
-Emby stellt über die öffentliche `IDeviceDiscovery`-API nur Discovery-Events bereit, aber keinen offiziellen per-Gerät-Ignore-Hook. Deshalb ersetzt das Plugin zur Laufzeit per Reflection **nur** den `DeviceDiscovered`-Callback von `Emby.Dlna.PlayTo.PlayToManager` durch einen Proxy. Andere SSDP-Subscriber bleiben unverändert.
+The plugin only filters **server-side DLNA/UPnP renderers**.
 
-Das ist absichtlich fail-open: Kann der interne PlayTo-Handler nach einem Emby-Update nicht gefunden werden, wird nichts blockiert und Emby bleibt funktionsfähig. Im Log erscheint dann kein `PlayTo-Filter aktiv`.
+It does **not** filter:
 
-## Build
+- Chromecast / Google Cast targets
+- active Emby client sessions such as Emby for LG, Android, etc.
+- other device types that do not pass through Emby's DLNA PlayTo discovery path
 
-Das Projekt verwendet `MediaBrowser.Server.Core 4.9.1.90` und `netstandard2.0`.
+That is why Emby's **Play on** list can contain more devices than the plugin settings page.
 
-```bash
-dotnet build Emby.DlnaRendererFilter.csproj -c Release
-```
+## Compatibility
 
-Ausgabe:
+Tested with:
+
+- Emby Server 4.9.5.0
+- Synology DSM 7.2
+
+The project targets `netstandard2.0` and uses `MediaBrowser.Server.Core 4.9.1.90`.
+
+Other Emby versions may work, but have not yet been validated. Because the filter hooks an internal Emby PlayTo callback by reflection, an Emby update can require a plugin update.
+
+## Installation
+
+1. Download `Emby.DlnaRendererFilter.dll` from the latest GitHub Release.
+2. Stop Emby Server.
+3. Copy the DLL into the Emby Server plugin directory.
+4. Start Emby Server.
+5. Open **Dashboard → Plugins → DLNA Renderer Filter**.
+6. Leave **Enable filter** enabled and disable any DLNA renderer that should no longer appear in **Play on**.
+7. Save the configuration.
+8. Restart Emby once if the renderer had already been created as an active PlayTo session.
+
+### Synology DSM example
+
+On the tested Synology package installation the source plugin directory is:
 
 ```text
-bin/Release/netstandard2.0/Emby.DlnaRendererFilter.dll
+/volume1/@appstore/EmbyServer/system/plugins/
 ```
 
-Alternativ kann der mitgelieferte GitHub-Actions-Workflow verwendet werden.
+Example:
 
-## Installation auf DSM / Emby 4.9.x
+```bash
+cp Emby.DlnaRendererFilter.dll /volume1/@appstore/EmbyServer/system/plugins/
+chmod 644 /volume1/@appstore/EmbyServer/system/plugins/Emby.DlnaRendererFilter.dll
+synopkg restart EmbyServer
+```
 
-1. Emby stoppen.
-2. `Emby.DlnaRendererFilter.dll` in Embys `plugins`-Verzeichnis kopieren.
-3. Emby starten.
-4. Im Emby-Dashboard **Plugins → DLNA Renderer Filter** öffnen.
-5. Renderer einmal neu erkennen lassen.
-6. Unerwünschte Renderer deaktivieren und speichern.
-7. Falls das Gerät bereits als PlayTo-Session vorhanden war, Emby einmal neu starten.
+Emby may copy the plugin into its writable runtime plugin directory during startup. This is normal.
 
-## Erwartete Logzeilen
+## Verification
 
-Bei erfolgreicher Initialisierung:
+Successful startup:
 
 ```text
 DLNA Renderer Filter: gestartet.
 DLNA Renderer Filter: PlayTo-Filter aktiv. Event-Feld: ...
 ```
 
-Beim Blockieren eines Geräts:
+When a renderer is filtered:
 
 ```text
 DLNA Renderer Filter: PlayTo-Renderer blockiert: <uuid> (<location>)
 ```
 
-## Version
+## How it works
 
-0.1.0 – erster Proof-of-Concept für Emby 4.9.x.
+Emby's public `IDeviceDiscovery` API exposes discovery events but no public per-renderer ignore hook.
+
+The plugin therefore locates only the `DeviceDiscovered` callback belonging to `Emby.Dlna.PlayTo.PlayToManager` and replaces that delegate at runtime with a small proxy. Other SSDP subscribers are left untouched.
+
+The original handler is called for visible devices and skipped only for UUIDs selected as hidden in the plugin configuration. On shutdown the plugin attempts to restore the original handler.
+
+## Build
+
+```bash
+dotnet restore Emby.DlnaRendererFilter.csproj
+dotnet build Emby.DlnaRendererFilter.csproj -c Release --no-restore
+```
+
+Output:
+
+```text
+bin/Release/netstandard2.0/Emby.DlnaRendererFilter.dll
+```
+
+GitHub Actions also builds the plugin automatically and publishes a versioned artifact.
+
+## Support / beta testing
+
+If you test the plugin on another Emby Server version or operating system, please report:
+
+- Emby Server version
+- operating system / platform
+- whether the settings page opens
+- whether the expected DLNA renderer appears in the plugin
+- whether hiding it removes it from **Play on**
+- relevant `DLNA Renderer Filter` log lines if it fails
+
+## License
+
+MIT. See [LICENSE](LICENSE).
+
+## Current release
+
+**v0.1.4**
+
+- working configuration UI on Emby 4.9.5.0
+- per-UUID DLNA renderer filtering
+- plugin thumbnail
+- versioned GitHub Actions artifacts
+- tested successfully with a Denon AVR-X4400H, a custom HEOS bridge renderer and a Sony soundbar
