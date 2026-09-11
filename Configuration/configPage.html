@@ -4,7 +4,7 @@
     <title>DLNA Renderer Filter</title>
 </head>
 <body>
-<div id="DlnaRendererFilterPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-button,emby-checkbox">
+<div id="DlnaRendererFilterPage" data-role="page" class="page type-interior pluginConfigurationPage" data-controller="__plugin/DlnaRendererFilter.js">
     <div data-role="content">
         <div class="content-primary">
             <form id="DlnaRendererFilterForm">
@@ -31,77 +31,6 @@
             </form>
         </div>
     </div>
-<script type="text/javascript">
-(function () {
-    var pluginId = '6c35d290-4ef5-47e9-8c7f-51eac8be8c14';
-    var page = document.querySelector('#DlnaRendererFilterPage');
-    var config = null;
-
-    function esc(value) {
-        var div = document.createElement('div');
-        div.textContent = value || '';
-        return div.innerHTML;
-    }
-
-    function norm(value) {
-        return (value || '').replace(/^uuid:/i, '').split('::')[0].trim().toLowerCase();
-    }
-
-    function render() {
-        var list = page.querySelector('#rendererList');
-        var devices = (config && config.Devices) || [];
-        var hidden = ((config && config.HiddenUuids) || []).map(norm);
-
-        if (!devices.length) {
-            list.innerHTML = '<p>Noch keine Renderer erkannt. Starte Emby neu oder öffne „Wiedergabe auf …“, damit eine SSDP-Suche ausgelöst wird.</p>';
-            return;
-        }
-
-        list.innerHTML = devices.map(function (d, i) {
-            var id = 'renderer_' + i;
-            var uuid = norm(d.Uuid);
-            var visible = hidden.indexOf(uuid) === -1;
-            var title = d.FriendlyName || d.ModelName || d.Uuid || 'Unbekannter Renderer';
-            var details = [d.Manufacturer, d.ModelName, d.IpAddress].filter(Boolean).join(' · ');
-            return '<div class="checkboxContainer checkboxContainer-withDescription" style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,.12)">' +
-                '<label class="emby-checkbox-label">' +
-                '<input type="checkbox" is="emby-checkbox" class="rendererToggle" id="' + id + '" data-uuid="' + esc(d.Uuid) + '" ' + (visible ? 'checked' : '') + ' />' +
-                '<span>' + esc(title) + '</span></label>' +
-                '<div class="fieldDescription">' + esc(details) + '</div>' +
-                '<div class="fieldDescription" style="font-family:monospace">UUID: ' + esc(d.Uuid) + '</div>' +
-                '</div>';
-        }).join('');
-    }
-
-    function load() {
-        Dashboard.showLoadingMsg();
-        ApiClient.getPluginConfiguration(pluginId).then(function (c) {
-            config = c;
-            page.querySelector('#FilterEnabled').checked = c.FilterEnabled !== false;
-            render();
-            Dashboard.hideLoadingMsg();
-        });
-    }
-
-    page.addEventListener('pageshow', load);
-
-    page.querySelector('#DlnaRendererFilterForm').addEventListener('submit', function (e) {
-        e.preventDefault();
-        if (!config) return false;
-        Dashboard.showLoadingMsg();
-        config.FilterEnabled = page.querySelector('#FilterEnabled').checked;
-        config.HiddenUuids = Array.prototype.slice.call(page.querySelectorAll('.rendererToggle'))
-            .filter(function (x) { return !x.checked; })
-            .map(function (x) { return x.getAttribute('data-uuid'); });
-
-        ApiClient.updatePluginConfiguration(pluginId, config).then(function (result) {
-            Dashboard.processPluginConfigurationUpdateResult(result);
-            Dashboard.hideLoadingMsg();
-        });
-        return false;
-    });
-})();
-</script>
 </div>
 </body>
 </html>
