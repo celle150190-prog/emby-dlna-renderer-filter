@@ -4,17 +4,19 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: '8.0.x'
 
@@ -39,21 +41,54 @@ jobs:
           cp LICENSE artifact/
           cp CHANGELOG.md artifact/
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Emby-DLNA-Renderer-Filter-v${{ env.PLUGIN_VERSION }}
           path: artifact/
 
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: Emby-DLNA-Renderer-Filter-v*
+          path: artifact
+          merge-multiple: true
+
+      - name: Read plugin version
+        shell: bash
+        run: |
+          DLL="artifact/Emby.DlnaRendererFilter.dll"
+          if [ ! -f "$DLL" ]; then
+            echo "Plugin DLL missing from artifact."
+            exit 1
+          fi
+
+          ARTIFACT_NAME=$(find artifact -maxdepth 1 -type f -name 'Emby.DlnaRendererFilter.dll' -print -quit)
+          echo "DLL_PATH=$ARTIFACT_NAME" >> "$GITHUB_ENV"
+
       - name: Create GitHub Release if missing
-        if: github.ref == 'refs/heads/main'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          TAG="v${PLUGIN_VERSION}"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG already exists."
-            exit 0
-          fi
+          VERSION=$(grep -oPm1 '(?<=<AssemblyInformationalVersion>)[^<]+' artifact/README.md 2>/dev/null || true)
+          TAG=$(gh api "repos/$REPOSITORY/releases/latest" --jq .tag_name 2>/dev/null || true)
 
-          gh release create "$TAG"             bin/Release/netstandard2.0/Emby.DlnaRendererFilter.dll             --target "$GITHUB_SHA"             --title "Emby DLNA Renderer Filter $TAG"             --generate-notes
+          # Determine version from the artifact name created by the build job.
+          NAME=$(ls artifact/Emby.DlnaRendererFilter.dll >/dev/null 2>&1 && echo "v${{ needs.build.outputs.plugin_version }}" || true)
+
+          # Fall back to reading the assembly version from the repository release context is intentionally avoided.
+          # The release is only created when a matching tag does not already exist.
+          CURRENT_TAG=$(gh release list --repo "$REPOSITORY" --limit 1 --json tagName --jq '.[0].tagName' 2>/dev/null || true)
+
+          if [ -n "$CURRENT_TAG" ] && gh release view "$CURRENT_TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
+            echo "Latest release already exists: $CURRENT_TAG"
+          fi
