@@ -1,0 +1,28 @@
+name: Build DLNA Renderer Filter
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore
+        run: dotnet restore Emby.DlnaRendererFilter.csproj
+      - name: Build
+        run: dotnet build Emby.DlnaRendererFilter.csproj -c Release --no-restore
+      - name: Package
+        run: |
+          mkdir -p artifact
+          cp bin/Release/netstandard2.0/Emby.DlnaRendererFilter.dll artifact/
+          cp README.md artifact/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Emby-DLNA-Renderer-Filter-v0.1.0
+          path: artifact/
