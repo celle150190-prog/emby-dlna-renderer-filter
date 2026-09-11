@@ -10,19 +10,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+
+      - name: Read plugin version
+        shell: bash
+        run: |
+          VERSION=$(grep -oPm1 '(?<=<AssemblyInformationalVersion>)[^<]+' Emby.DlnaRendererFilter.csproj)
+          echo "PLUGIN_VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Building version $VERSION"
+
       - name: Restore
         run: dotnet restore Emby.DlnaRendererFilter.csproj
+
       - name: Build
         run: dotnet build Emby.DlnaRendererFilter.csproj -c Release --no-restore
+
       - name: Package
         run: |
           mkdir -p artifact
           cp bin/Release/netstandard2.0/Emby.DlnaRendererFilter.dll artifact/
           cp README.md artifact/
+
       - uses: actions/upload-artifact@v4
         with:
-          name: Emby-DLNA-Renderer-Filter-v0.1.0
+          name: Emby-DLNA-Renderer-Filter-v${{ env.PLUGIN_VERSION }}
           path: artifact/
