@@ -1,8 +1,8 @@
-<div id="DlnaRendererFilterPage" class="page type-interior pluginConfigurationPage" data-controller="__plugin/DlnaRendererFilterjs" data-title="DLNA Renderer Filter">
-    <div data-role="content">
-        <div class="content-primary">
+<div is="emby-scroller" class="view flex flex-direction-column scrollFrameY flex-grow" data-horizontal="false" data-forcescrollbar="true" data-centerfocus="true" data-bindheader="true" data-controller="__plugin/DlnaRendererFilterjs" data-title="DLNA Renderer Filter">
+    <div class="scrollSlider flex-grow flex-direction-column padded-left padded-left-page padded-right padded-top-page padded-bottom-page">
+        <div class="readOnlyContent auto-center">
             <form id="DlnaRendererFilterForm">
-                <h2>DLNA Renderer Filter</h2>
+                <h1>DLNA Renderer Filter</h1>
                 <p>Hier kannst du festlegen, welche DLNA-Renderer in Embys „Wiedergabe auf …“ angeboten werden.</p>
 
                 <div class="checkboxContainer checkboxContainer-withDescription">
@@ -13,7 +13,7 @@
                     <div class="fieldDescription">Neue Geräte sind standardmäßig sichtbar. Ein deaktiviertes Gerät wird nur aus PlayTo herausgefiltert.</div>
                 </div>
 
-                <h3>Erkannte Renderer</h3>
+                <h2>Erkannte Renderer</h2>
                 <div id="rendererList"><p>Noch keine Renderer erkannt.</p></div>
 
                 <div style="margin-top:2em">
